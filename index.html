@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Шахта-тайкун</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--menu-bg:#bfe6ff;--menu-bg2:#e3f4ff;--ink:#12344d;--card:#ffffff;--accent:#2a8de0;--accent-d:#1c6fb8;--gold:#f2b705;--soft:#d6ecfb;--lvl-bg:#eaf6ff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--card:#173247;--ink:#eaf5ff;--soft:#24465f;--lvl-bg:#0f2433;color-scheme:dark}}
+:root[data-theme="dark"]{--card:#173247;--ink:#eaf5ff;--soft:#24465f;--lvl-bg:#0f2433}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:var(--menu-bg)}
+.screen{display:none;height:100%;padding:20px;flex-direction:column;align-items:center}
+.screen.on{display:flex}
+#menu{justify-content:center;background:linear-gradient(180deg,var(--menu-bg2),var(--menu-bg));color:#12344d}
+#menu h1{font-size:2.2rem;margin:0 0 6px;text-align:center}
+#menu p{margin:0 0 28px;opacity:.7}
+.btn{width:min(320px,100%);padding:16px 20px;font-size:1.15rem;font-weight:700;border:0;border-radius:16px;background:var(--accent);color:#fff;margin:7px 0;cursor:pointer;box-shadow:0 4px 0 var(--accent-d);display:flex;justify-content:space-between;align-items:center}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--accent-d)}
+.btn.off{background:#fff;color:#6c8aa1;box-shadow:0 4px 0 #a9cbe3}
+.btn small{font-size:.75rem;font-weight:600;background:#d6ecfb;color:#3b6e92;padding:3px 9px;border-radius:99px}
+#game{background:var(--lvl-bg);padding:14px;overflow:hidden}
+.top{width:min(480px,100%);display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.top button,.b2{border:0;border-radius:12px;font-weight:700;font-size:.95rem;background:var(--accent);color:#fff;padding:10px 12px}
+.top .g,.b2.g{background:var(--soft);color:var(--ink)}
+.money{flex:1;text-align:center;font-size:1.25rem;font-weight:800;line-height:1.1}
+.money small{display:block;font-size:.75rem;font-weight:600;opacity:.65}
+.b2:disabled{opacity:.4}
+.pick{display:flex;flex-direction:column;align-items:center;line-height:1;padding:6px 8px;font-size:1.2rem}
+.pick small{font-size:.55rem;margin-top:3px;white-space:nowrap;font-weight:700}
+#ver{position:fixed;right:14px;bottom:calc(10px + env(safe-area-inset-bottom,0px));font-size:.8rem;font-weight:600;color:#12344d;opacity:.6}
+#list{width:min(480px,100%);flex:1;overflow-y:auto;padding-bottom:12px}
+.fl{background:var(--card);border-radius:18px;padding:12px;margin-bottom:10px;box-shadow:0 4px 14px rgba(30,90,140,.12)}
+.fh{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.em{font-size:1.8rem}.fh div{flex:1}.fh small{opacity:.65;font-weight:600}
+.rt{font-weight:800;color:var(--accent)}
+.pb{position:relative;height:38px;border-radius:12px;background:var(--soft);overflow:hidden;cursor:pointer}
+.pb i{position:absolute;inset:0 auto 0 0;background:var(--gold);width:0;opacity:.75}
+.pb span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800}
+.fr{display:flex;gap:8px;margin-top:8px}.fr .b2{flex:1;line-height:1.25}
+#buy{width:min(480px,100%);justify-content:center;margin:2px 0 0;font-size:1rem}
+#buy:disabled{opacity:.45}
+#hint{width:min(480px,100%);font-size:.85rem;opacity:.7;text-align:center;margin-bottom:8px}
+#toast{position:fixed;left:50%;bottom:calc(30px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#12344d;color:#fff;padding:10px 18px;border-radius:99px;opacity:0;transition:opacity .25s;pointer-events:none;font-weight:600;text-align:center}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<section id="menu" class="screen on">
+  <h1>⛏️ Шахта-тайкун</h1>
+  <p>Копай, улучшай, богатей</p>
+  <button class="btn" id="start">Старт <span>▶</span></button>
+  <button class="btn off" data-soon>Мир <small>скоро будет</small></button>
+  <button class="btn off" data-soon>Язык <small>скоро будет</small></button>
+  <div id="ver"></div>
+</section>
+<section id="game" class="screen">
+  <div class="top"><button class="g" id="toMenu">☰</button><div class="money">💰 <span id="mo">0</span><small id="ips"></small></div><button class="g" id="mode">×1</button><button class="g pick" id="pick">⛏️<small>Скоро выйдет</small></button></div>
+  
+  <div id="list"></div>
+  <button class="btn" id="buy"></button>
+</section>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const NAMES=['Угольная шахта','Медная шахта','Железная шахта','Серебряная шахта','Золотая шахта','Алмазная шахта','Рубиновая шахта','Изумрудная шахта','Кристальная шахта','Космическая шахта'];
+const EM=['⛏️','🪨','🔩','🥈','🥇','💎','🔴','🟢','🔮','🚀'];
+const MODES=[1,10,100];let mode=0;
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2400)}
+function screen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===id))}
+function fmt(n){if(n<1000)return n<10?n.toFixed(1):String(Math.floor(n));const u=['K','M','B','T','Qa','Qi','Sx'];let i=-1;while(n>=1000&&i<u.length-1){n/=1000;i++}return n.toFixed(n<10?2:1)+u[i]}
+const fresh=()=>({money:0,floors:[{lvl:1,store:0,mgr:false}]});
+function load(){try{const j=JSON.parse(localStorage.getItem('mine1'));if(j&&j.floors&&j.floors.length)return j}catch(e){}return null}
+function save(){try{localStorage.setItem('mine1',JSON.stringify({money:S.money,floors:S.floors,t:Date.now()}))}catch(e){}}
+let S=load()||fresh();
+const per=i=>Math.pow(6,i);
+const mult=f=>{let m=1;for(const k of [10,25,50,100,200,400])if(f.lvl>=k)m*=2;return m};
+const rate=(f,i)=>per(i)*f.lvl*mult(f);
+const cap=(f,i)=>rate(f,i)*20;
+const upg=(f,i,n)=>{let c=0;for(let k=0;k<n;k++)c+=10*per(i)*Math.pow(1.15,f.lvl-1+k);return Math.ceil(c)};
+const buyCost=n=>200*Math.pow(8,n-1);
+const mgrCost=i=>300*Math.pow(8,i);
+const maxL=i=>i<5?35:50;
+const nUp=(f,i)=>Math.min(MODES[mode],maxL(i)-f.lvl);
+function advance(dt){S.floors.forEach((f,i)=>{const r=rate(f,i);if(f.mgr)S.money+=r*dt;else f.store=Math.min(cap(f,i),f.store+r*dt)})}
+function build(){
+  $('#list').innerHTML=S.floors.map((f,i)=>`<div class="fl" data-i="${i}"><div class="fh"><span class="em">${EM[i]}</span><div><b>${NAMES[i]}</b> <small class="lv"></small></div><span class="rt"></span></div><div class="pb" data-a="c"><i></i><span class="st"></span></div><div class="fr"><button class="b2" data-a="u"></button><button class="b2 g" data-a="m"></button></div></div>`).join('');
+  update();
+}
+function update(){
+  $('#mo').textContent=fmt(S.money);
+  let ips=0;
+  const cards=document.querySelectorAll('.fl');
+  S.floors.forEach((f,i)=>{
+    const c=cards[i];if(!c)return;
+    const r=rate(f,i),m=mult(f),n=nUp(f,i),uc=upg(f,i,Math.max(n,0)),mc=mgrCost(i);
+    if(f.mgr)ips+=r;
+    c.querySelector('.lv').textContent='ур. '+f.lvl+'/'+maxL(i)+(m>1?' · ×'+m:'');
+    c.querySelector('.rt').textContent=fmt(r)+'/с';
+    c.querySelector('.pb i').style.width=f.mgr?'100%':Math.min(100,f.store/cap(f,i)*100)+'%';
+    c.querySelector('.st').textContent=f.mgr?'⚙️ Авто-сбор':'Собрать: '+fmt(f.store);
+    const u=c.querySelector('[data-a=u]');if(n<=0){u.textContent='Макс. уровень ✓';u.disabled=true}else{u.textContent='Улучшить ×'+n+' · 💰'+fmt(uc);u.disabled=S.money<uc}
+    const b=c.querySelector('[data-a=m]');b.textContent=f.mgr?'Менеджер ✓':'Менеджер · 💰'+fmt(mc);b.disabled=f.mgr||S.money<mc;
+  });
+  $('#ips').textContent='авто: '+fmt(ips)+'/с';
+  const nb=$('#buy');
+  if(S.floors.length<NAMES.length){const k=S.floors.length,bc=buyCost(k);nb.textContent='＋ '+NAMES[k]+' · 💰'+fmt(bc);nb.disabled=S.money<bc}
+  else{nb.textContent='Скоро будет';nb.disabled=true}
+}
+$('#list').onclick=e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;
+  const i=+t.closest('.fl').dataset.i,f=S.floors[i],a=t.dataset.a;
+  if(a==='c'){S.money+=f.store;f.store=0}
+  else if(a==='u'){const n=nUp(f,i),c=upg(f,i,Math.max(n,0));if(n>0&&S.money>=c){S.money-=c;f.lvl+=n}}
+  else if(a==='m'){const c=mgrCost(i);if(!f.mgr&&S.money>=c){S.money-=c;f.mgr=true;S.money+=f.store;f.store=0}}
+  update();save();
+};
+$('#buy').onclick=()=>{const k=S.floors.length,c=buyCost(k);if(k<NAMES.length&&S.money>=c){S.money-=c;S.floors.push({lvl:1,store:0,mgr:false});build();save();$('#list').scrollTop=1e6}};
+$('#mode').onclick=()=>{mode=(mode+1)%MODES.length;$('#mode').textContent='×'+MODES[mode];update()};
+$('#start').onclick=()=>{screen('game');build()};
+$('#toMenu').onclick=()=>{save();screen('menu')};
+document.querySelectorAll('[data-soon]').forEach(b=>b.onclick=()=>toast('Скоро будет'));
+$('#pick').onclick=()=>toast('Скоро выйдет');
+const VERSION='0.1';
+$('#ver').textContent='Версия '+VERSION;
+(function(){
+  S.floors=S.floors.slice(0,NAMES.length);S.floors.forEach((f,i)=>{f.lvl=Math.min(Math.max(1,+f.lvl||1),maxL(i));f.store=+f.store||0;f.mgr=!!f.mgr});S.money=+S.money||0;
+  try{const j=JSON.parse(localStorage.getItem('mine1'));if(j&&j.t){const dt=Math.min((Date.now()-j.t)/1000,7200);if(dt>60){const m0=S.money;advance(dt);const g=S.money-m0;if(g>0)toast('Пока тебя не было: +💰'+fmt(g))}}}catch(e){}
+})();
+let last=Date.now();
+setInterval(()=>{const n=Date.now(),dt=(n-last)/1000;last=n;advance(dt);if($('#game').classList.contains('on'))update()},200);
+setInterval(save,3000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+window.addEventListener('pagehide',save);
+</script>
+</body>
+</html>
